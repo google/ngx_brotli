@@ -22,7 +22,7 @@ Both Brotli library and nginx module are under active development.
     $ make && make install
 
 ngx_brotli filter module depends on
-[libbroti](https://github.com/bagder/libbrotli),
+[libbrotli](https://github.com/bagder/libbrotli),
 which must be installed on the target system for it to work.
 
 Alternatively, ngx_brotli static module can be compiled into nginx by itself
