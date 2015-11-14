@@ -105,8 +105,16 @@ fi
 CORE_INCS="$CORE_INCS $ngx_feature_path"
 CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
 
-HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES \
-                         ngx_http_brotli_filter_module"
+if [ $HTTP_GZIP = YES ]; then
+    module=$HTTP_GZIP_FILTER_MODULE
+elif echo $HTTP_FILTER_MODULES | grep ngx_pagespeed_etag_filter >/dev/null; then
+    module=ngx_pagespeed_etag_filter
+else
+    module=$HTTP_RANGE_HEADER_FILTER_MODULE
+fi
+
+HTTP_FILTER_MODULES=`echo $HTTP_FILTER_MODULES \
+                     | sed "s/$module/$module ngx_http_brotli_filter_module/"`
 
 NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                 $ngx_addon_dir/src/ngx_http_brotli_filter_module.cc"
