@@ -788,7 +788,7 @@ ngx_http_brotli_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         return reinterpret_cast<char *>(NGX_CONF_ERROR);
     }
 
-    return reinterpret_cast<char *>(NGX_CONF_OK);
+    return NGX_CONF_OK;
 }
 
 
@@ -820,7 +820,7 @@ ngx_http_brotli_window(ngx_conf_t *cf, void *post, void *data)
         if (wsize == *np) {
             *np = wbits;
 
-            return reinterpret_cast<char *>(NGX_CONF_OK);
+            return NGX_CONF_OK;
         }
 
         wbits--;
