@@ -12,7 +12,11 @@ extern "C" {
   #include <ngx_http.h>
 }
 
+#if (NGX_HAVE_BROTLI_ENC_COMPRESSOR_H)
+#include <brotli/enc/compressor.h>
+#else
 #include <brotli/enc/encode.h>
+#endif
 
 
 typedef struct {
