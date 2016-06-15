@@ -411,7 +411,7 @@ ngx_http_brotli_filter_params(ngx_http_request_t *r, ngx_http_brotli_ctx_t *ctx)
 
     if (r->headers_out.content_length_n > 0) {
         while (r->headers_out.content_length_n < (1 << (wbits - 1))
-               && wbits > brotli::kMinWindowBits)
+               && wbits > kBrotliMinWindowBits)
         {
             wbits--;
         }
@@ -840,8 +840,8 @@ ngx_http_brotli_window(ngx_conf_t *cf, void *post, void *data)
 
     size_t  wbits, wsize, mbits;
 
-    wbits = brotli::kMaxWindowBits;
-    mbits = brotli::kMinWindowBits;
+    wbits = kBrotliMaxWindowBits;
+    mbits = kBrotliMinWindowBits;
 
     for (wsize = (1 << wbits); wsize >= (1U << mbits); wsize >>= 1) {
 
