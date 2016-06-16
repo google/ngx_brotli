@@ -70,7 +70,7 @@ static ngx_int_t ngx_http_brotli_filter_get_buf(ngx_http_request_t *r,
     ngx_http_brotli_ctx_t *ctx);
 static void *ngx_http_brotli_filter_alloc(void *opaque, size_t size);
 static void ngx_http_brotli_filter_free(void *opaque, void *address);
-static void ngx_http_brotli_cleanup(void *data);
+static void ngx_http_brotli_filter_cleanup(void *data);
 
 static ngx_int_t ngx_http_brotli_ok(ngx_http_request_t *r);
 static ngx_int_t ngx_http_brotli_accept_encoding(ngx_str_t *ae);
@@ -272,7 +272,7 @@ ngx_http_brotli_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             goto failed;
         }
 
-        cln->handler = ngx_http_brotli_cleanup;
+        cln->handler = ngx_http_brotli_filter_cleanup;
         cln->data = ctx;
     }
 
@@ -539,7 +539,7 @@ ngx_http_brotli_filter_process(ngx_http_request_t *r,
     ctx->brotli_in = 0;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "brotli data: %p, size:%uz", out, size);
+                   "brotli encoded: %p, size:%uz", out, size);
 
     if (size == 0 && !ctx->flush && !ctx->last) {
         return NGX_AGAIN;
@@ -697,7 +697,7 @@ ngx_http_brotli_filter_free(void *opaque, void *address)
 
 
 static void
-ngx_http_brotli_cleanup(void *data)
+ngx_http_brotli_filter_cleanup(void *data)
 {
     ngx_http_brotli_ctx_t  *ctx = data;
 
