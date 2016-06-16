@@ -6,65 +6,60 @@
  */
 
 
-extern "C" {
-  #include <ngx_config.h>
-  #include <ngx_core.h>
-  #include <ngx_http.h>
-}
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_http.h>
 
-#if (NGX_HAVE_BROTLI_ENC_COMPRESSOR_H)
-#include <brotli/enc/compressor.h>
-#else
 #include <brotli/enc/encode.h>
-#endif
 
 
 typedef struct {
-    ngx_flag_t                  enable;
+    ngx_flag_t            enable;
 
-    ngx_hash_t                  types;
+    ngx_hash_t            types;
 
-    ngx_bufs_t                  bufs;
+    ngx_bufs_t            bufs;
 
-    ngx_int_t                   quality;
-    size_t                      win_bits;
-    ssize_t                     min_length;
+    ngx_int_t             quality;
+    size_t                win_bits;
+    ssize_t               min_length;
 
-    ngx_array_t                *types_keys;
+    ngx_array_t          *types_keys;
 } ngx_http_brotli_conf_t;
 
 
 typedef struct {
-    brotli::BrotliCompressor   *compressor;
-    brotli::BrotliParams        params;
+    BrotliEncoderState   *encoder;
 
-    size_t                      brotli_ring;
-    size_t                      brotli_in;
-    u_char                     *brotli_out;
-    u_char                     *brotli_last;
+    size_t                brotli_ring;
+    size_t                brotli_in;
+    u_char               *brotli_out;
+    u_char               *brotli_last;
 
-    size_t                      bytes_in;
-    size_t                      bytes_out;
+    off_t                 content_length;
 
-    ngx_chain_t                *in;
-    ngx_chain_t                *free;
-    ngx_chain_t                *busy;
-    ngx_chain_t                *out;
-    ngx_chain_t               **last_out;
+    size_t                bytes_in;
+    size_t                bytes_out;
 
-    ngx_buf_t                  *out_buf;
-    ngx_int_t                   bufs;
+    ngx_chain_t          *in;
+    ngx_chain_t          *free;
+    ngx_chain_t          *busy;
+    ngx_chain_t          *out;
+    ngx_chain_t         **last_out;
 
-    unsigned                    done:1;
-    unsigned                    sent:1;
-    unsigned                    last:1;
-    unsigned                    flush:1;
-    unsigned                    nomem:1;
+    ngx_buf_t            *out_buf;
+    ngx_int_t             bufs;
+
+    unsigned              done:1;
+    unsigned              sent:1;
+    unsigned              last:1;
+    unsigned              flush:1;
+    unsigned              nomem:1;
 } ngx_http_brotli_ctx_t;
 
 
-static void ngx_http_brotli_filter_params(ngx_http_request_t *r,
-    ngx_http_brotli_ctx_t *ctx);
+static BrotliEncoderState *ngx_http_brotli_filter_create_encoder(
+    ngx_http_request_t *r);
 static ngx_int_t ngx_http_brotli_filter_add_data(ngx_http_request_t *r,
     ngx_http_brotli_ctx_t *ctx);
 static ngx_int_t ngx_http_brotli_filter_process(ngx_http_request_t *r,
@@ -191,8 +186,7 @@ ngx_http_brotli_header_filter(ngx_http_request_t *r)
     ngx_http_brotli_ctx_t   *ctx;
     ngx_http_brotli_conf_t  *conf;
 
-    conf = reinterpret_cast<ngx_http_brotli_conf_t *>(
-               ngx_http_get_module_loc_conf(r, ngx_http_brotli_filter_module));
+    conf = ngx_http_get_module_loc_conf(r, ngx_http_brotli_filter_module);
 
     if (!conf->enable
         || (r->headers_out.status != NGX_HTTP_OK
@@ -214,20 +208,18 @@ ngx_http_brotli_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
-    ctx = reinterpret_cast<ngx_http_brotli_ctx_t *>(
-              ngx_pcalloc(r->pool, sizeof(ngx_http_brotli_ctx_t)));
+    ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_brotli_ctx_t));
     if (ctx == NULL) {
         return NGX_ERROR;
     }
 
     ctx->last_out = &ctx->out;
 
-    ngx_http_brotli_filter_params(r, ctx);
+    ctx->content_length = r->headers_out.content_length_n;
 
     ngx_http_set_ctx(r, ctx, ngx_http_brotli_filter_module);
 
-    h = reinterpret_cast<ngx_table_elt_t *>(
-            ngx_list_push(&r->headers_out.headers));
+    h = ngx_list_push(&r->headers_out.headers);
     if (h == NULL) {
         return NGX_ERROR;
     }
@@ -256,8 +248,7 @@ ngx_http_brotli_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_pool_cleanup_t     *cln;
     ngx_http_brotli_ctx_t  *ctx;
 
-    ctx = reinterpret_cast<ngx_http_brotli_ctx_t *>(
-              ngx_http_get_module_ctx(r, ngx_http_brotli_filter_module));
+    ctx = ngx_http_get_module_ctx(r, ngx_http_brotli_filter_module);
 
     if (ctx == NULL || ctx->done || r->header_only) {
         return ngx_http_next_body_filter(r, in);
@@ -266,18 +257,13 @@ ngx_http_brotli_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http brotli filter");
 
-    if (ctx->compressor == NULL) {
-        ctx->compressor = new brotli::BrotliCompressor(ctx->params);
-        if (ctx->compressor == NULL) {
+    if (ctx->encoder == NULL) {
+        ctx->encoder = ngx_http_brotli_filter_create_encoder(r);
+        if (ctx->encoder == NULL) {
             goto failed;
         }
 
-        ctx->brotli_ring = ctx->compressor->input_block_size();
-
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "brotli compressor: lvl:%d win:%d blk:%uz",
-                       ctx->params.quality, (1 << ctx->params.lgwin),
-                       ctx->brotli_ring);
+        ctx->brotli_ring = BrotliEncoderInputBlockSize(ctx->encoder);
 
         cln = ngx_pool_cleanup_add(r->pool, 0);
         if (cln == NULL) {
@@ -374,9 +360,9 @@ ngx_http_brotli_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         if (ctx->done) {
             ctx->sent = 1;
 
-            if (ctx->compressor) {
-                delete ctx->compressor;
-                ctx->compressor = NULL;
+            if (ctx->encoder) {
+                BrotliEncoderDestroyInstance(ctx->encoder);
+                ctx->encoder = NULL;
             }
 
             return rc;
@@ -389,36 +375,73 @@ failed:
 
     ctx->done = 1;
 
-    if (ctx->compressor) {
-        delete ctx->compressor;
-        ctx->compressor = NULL;
+    if (ctx->encoder) {
+        BrotliEncoderDestroyInstance(ctx->encoder);
+        ctx->encoder = NULL;
     }
 
     return NGX_ERROR;
 }
 
 
-static void
-ngx_http_brotli_filter_params(ngx_http_request_t *r, ngx_http_brotli_ctx_t *ctx)
+static BrotliEncoderState *
+ngx_http_brotli_filter_create_encoder(ngx_http_request_t *r)
 {
     int                      wbits;
+    BrotliEncoderState      *encoder;
+    ngx_http_brotli_ctx_t   *ctx;
     ngx_http_brotli_conf_t  *conf;
 
-    conf = reinterpret_cast<ngx_http_brotli_conf_t *>(
-               ngx_http_get_module_loc_conf(r, ngx_http_brotli_filter_module));
+    encoder = BrotliEncoderCreateInstance(NULL, NULL, NULL);
+    if (encoder == NULL) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "BrotliEncoderCreateInstance() failed");
+        return NULL;
+    }
+
+    conf = ngx_http_get_module_loc_conf(r, ngx_http_brotli_filter_module);
+
+    if (!BrotliEncoderSetParameter(encoder, BROTLI_PARAM_QUALITY,
+                                   (uint32_t) conf->quality))
+    {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "BrotliEncoderSetParameter(QUALITY, %uD) failed",
+                      (uint32_t) conf->quality);
+        goto failed;
+    }
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_brotli_filter_module);
 
     wbits = conf->win_bits;
 
-    if (r->headers_out.content_length_n > 0) {
-        while (r->headers_out.content_length_n < (1 << (wbits - 1))
-               && wbits > brotli::kMinWindowBits)
+    if (ctx->content_length > 0) {
+        while (ctx->content_length < (1 << (wbits - 1))
+               && wbits > kBrotliMinWindowBits)
         {
             wbits--;
         }
     }
 
-    ctx->params.quality = conf->quality;
-    ctx->params.lgwin = wbits;
+    if (!BrotliEncoderSetParameter(encoder, BROTLI_PARAM_LGWIN,
+                                   (uint32_t) wbits)) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "BrotliEncoderSetParameter(LGWIN, %uD) failed",
+                      (uint32_t) wbits);
+        goto failed;
+    }
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "brotli encoder: lvl:%i win:%d blk:%uz",
+                   conf->quality, (1 << wbits),
+                   BrotliEncoderInputBlockSize(encoder));
+
+    return encoder;
+
+failed:
+
+    BrotliEncoderDestroyInstance(encoder);
+
+    return NULL;
 }
 
 
@@ -464,7 +487,7 @@ ngx_http_brotli_filter_add_data(ngx_http_request_t *r,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "brotli copy: %p, size:%uz", b, size);
 
-    ctx->compressor->CopyInputToRingBuffer(size, b->pos);
+    BrotliEncoderCopyInputToRingBuffer(ctx->encoder, size, b->pos);
 
     ctx->brotli_in += size;
     ctx->bytes_in += size;
@@ -500,7 +523,9 @@ ngx_http_brotli_filter_process(ngx_http_request_t *r,
 
     out = NULL;
 
-    if (!ctx->compressor->WriteBrotliData(ctx->last, ctx->flush, &size, &out)) {
+    if (!BrotliEncoderWriteData(ctx->encoder, ctx->last, ctx->flush, &size,
+                                &out))
+    {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                       "brotli failed: size:%uz l:%d f:%d",
                       ctx->brotli_in, ctx->last, ctx->flush);
@@ -579,7 +604,7 @@ ngx_http_brotli_filter_output(ngx_http_request_t *r, ngx_http_brotli_ctx_t *ctx)
                 return NGX_ERROR;
             }
 
-            cl->buf = reinterpret_cast<ngx_buf_t *>(ngx_calloc_buf(r->pool));
+            cl->buf = ngx_calloc_buf(r->pool);
             if (cl->buf == NULL) {
                 return NGX_ERROR;
             }
@@ -619,8 +644,7 @@ ngx_http_brotli_filter_get_buf(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    conf = reinterpret_cast<ngx_http_brotli_conf_t *>(
-               ngx_http_get_module_loc_conf(r, ngx_http_brotli_filter_module));
+    conf = ngx_http_get_module_loc_conf(r, ngx_http_brotli_filter_module);
 
     if (ctx->bufs < conf->bufs.num) {
         ctx->out_buf = ngx_create_temp_buf(r->pool, conf->bufs.size);
@@ -644,13 +668,11 @@ ngx_http_brotli_filter_get_buf(ngx_http_request_t *r,
 static void
 ngx_http_brotli_cleanup(void *data)
 {
-    ngx_http_brotli_ctx_t  *ctx;
+    ngx_http_brotli_ctx_t  *ctx = data;
 
-    ctx = reinterpret_cast<ngx_http_brotli_ctx_t *>(data);
-
-    if (ctx->compressor) {
-        delete ctx->compressor;
-        ctx->compressor = NULL;
+    if (ctx->encoder) {
+        BrotliEncoderDestroyInstance(ctx->encoder);
+        ctx->encoder = NULL;
     }
 }
 
@@ -691,7 +713,7 @@ ngx_http_brotli_accept_encoding(ngx_str_t *ae)
 {
     u_char  *p;
 
-    p = ngx_strcasestrn(ae->data, const_cast<char *>("br"), sizeof("br") - 2);
+    p = ngx_strcasestrn(ae->data, "br", sizeof("br") - 2);
     if (p == NULL) {
         return NGX_DECLINED;
     }
@@ -736,16 +758,14 @@ ngx_http_brotli_ratio_variable(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    ctx = reinterpret_cast<ngx_http_brotli_ctx_t *>(
-              ngx_http_get_module_ctx(r, ngx_http_brotli_filter_module));
+    ctx = ngx_http_get_module_ctx(r, ngx_http_brotli_filter_module);
 
     if (ctx == NULL || ctx->bytes_out == 0 || !ctx->sent) {
         v->not_found = 1;
         return NGX_OK;
     }
 
-    v->data = reinterpret_cast<u_char *>(
-                  ngx_pnalloc(r->pool, NGX_INT32_LEN + 3));
+    v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN + 3);
     if (v->data == NULL) {
         return NGX_ERROR;
     }
@@ -776,8 +796,7 @@ ngx_http_brotli_create_conf(ngx_conf_t *cf)
 {
     ngx_http_brotli_conf_t  *conf;
 
-    conf = reinterpret_cast<ngx_http_brotli_conf_t *>(
-               ngx_pcalloc(cf->pool, sizeof(ngx_http_brotli_conf_t)));
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_brotli_conf_t));
     if (conf == NULL) {
         return NULL;
     }
@@ -803,11 +822,8 @@ ngx_http_brotli_create_conf(ngx_conf_t *cf)
 static char *
 ngx_http_brotli_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 {
-    ngx_http_brotli_conf_t  *prev;
-    ngx_http_brotli_conf_t  *conf;
-
-    prev = reinterpret_cast<ngx_http_brotli_conf_t *>(parent);
-    conf = reinterpret_cast<ngx_http_brotli_conf_t *>(child);
+    ngx_http_brotli_conf_t  *prev = parent;
+    ngx_http_brotli_conf_t  *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
 
@@ -823,7 +839,7 @@ ngx_http_brotli_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                              ngx_http_html_default_types)
         != NGX_OK)
     {
-        return reinterpret_cast<char *>(NGX_CONF_ERROR);
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;
@@ -846,12 +862,11 @@ ngx_http_brotli_filter_init(ngx_conf_t *cf)
 static char *
 ngx_http_brotli_window(ngx_conf_t *cf, void *post, void *data)
 {
-    size_t *np = reinterpret_cast<size_t *>(data);
+    size_t  *np = data;
+    size_t   wbits, wsize, mbits;
 
-    size_t  wbits, wsize, mbits;
-
-    wbits = brotli::kMaxWindowBits;
-    mbits = brotli::kMinWindowBits;
+    wbits = kBrotliMaxWindowBits;
+    mbits = kBrotliMinWindowBits;
 
     for (wsize = (1 << wbits); wsize >= (1U << mbits); wsize >>= 1) {
 
@@ -864,6 +879,6 @@ ngx_http_brotli_window(ngx_conf_t *cf, void *post, void *data)
         wbits--;
     }
 
-    return const_cast<char *>("must be 1k, 2k, 4k, 8k, 16k, 32k, 64k, "
-                              "128k, 256k, 512k, 1m, 2m, 4m, 8m or 16m");
+    return "must be 1k, 2k, 4k, 8k, 16k, 32k, 64k, "
+           "128k, 256k, 512k, 1m, 2m, 4m, 8m or 16m";
 }
