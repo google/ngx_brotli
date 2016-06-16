@@ -68,6 +68,8 @@ static ngx_int_t ngx_http_brotli_filter_output(ngx_http_request_t *r,
     ngx_http_brotli_ctx_t *ctx);
 static ngx_int_t ngx_http_brotli_filter_get_buf(ngx_http_request_t *r,
     ngx_http_brotli_ctx_t *ctx);
+static void *ngx_http_brotli_filter_alloc(void *opaque, size_t size);
+static void ngx_http_brotli_filter_free(void *opaque, void *address);
 static void ngx_http_brotli_cleanup(void *data);
 
 static ngx_int_t ngx_http_brotli_ok(ngx_http_request_t *r);
@@ -392,7 +394,9 @@ ngx_http_brotli_filter_create_encoder(ngx_http_request_t *r)
     ngx_http_brotli_ctx_t   *ctx;
     ngx_http_brotli_conf_t  *conf;
 
-    encoder = BrotliEncoderCreateInstance(NULL, NULL, NULL);
+    encoder = BrotliEncoderCreateInstance(ngx_http_brotli_filter_alloc,
+                                          ngx_http_brotli_filter_free,
+                                          r->pool);
     if (encoder == NULL) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                       "BrotliEncoderCreateInstance() failed");
@@ -662,6 +666,33 @@ ngx_http_brotli_filter_get_buf(ngx_http_request_t *r,
     }
 
     return NGX_OK;
+}
+
+
+static void *
+ngx_http_brotli_filter_alloc(void *opaque, size_t size)
+{
+    ngx_pool_t  *pool = opaque;
+    void        *p;
+
+    p = ngx_palloc(pool, size);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pool->log, 0,
+                   "brotli alloc: %p, size:%uz", p, size);
+
+    return p;
+}
+
+
+static void
+ngx_http_brotli_filter_free(void *opaque, void *address)
+{
+#if (NGX_DEBUG)
+    ngx_pool_t  *pool = opaque;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pool->log, 0,
+                   "brotli free: %p", address);
+#endif
 }
 
 
