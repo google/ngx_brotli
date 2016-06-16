@@ -573,19 +573,29 @@ ngx_http_brotli_filter_output(ngx_http_request_t *r, ngx_http_brotli_ctx_t *ctx)
 
     if (ctx->last || ctx->flush) {
 
+        if (cl == NULL) {
+            cl = ngx_alloc_chain_link(r->pool);
+            if (cl == NULL) {
+                return NGX_ERROR;
+            }
+
+            cl->buf = reinterpret_cast<ngx_buf_t *>(ngx_calloc_buf(r->pool));
+            if (cl->buf == NULL) {
+                return NGX_ERROR;
+            }
+
+            cl->next = NULL;
+            *ctx->last_out = cl;
+            ctx->last_out = &cl->next;
+        }
+
         if (ctx->last) {
             ctx->done = 1;
-
-            if (cl) {
-                cl->buf->last_buf = 1;
-            }
+            cl->buf->last_buf = 1;
 
         } else if (ctx->flush) {
             ctx->flush = 0;
-
-            if (cl) {
-                cl->buf->flush = 1;
-            }
+            cl->buf->flush = 1;
         }
 
         r->connection->buffered &= ~NGX_HTTP_GZIP_BUFFERED;
