@@ -10,7 +10,11 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#if (NGX_HAVE_BROTLI_ENC_ENCODE_H)
 #include <brotli/enc/encode.h>
+#else
+#include <brotli/encode.h>
+#endif
 
 
 typedef struct {
