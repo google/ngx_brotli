@@ -65,7 +65,7 @@ ngx_feature_test="BrotliEncoderCreateInstance(NULL, NULL, NULL)"
 # auto-discovery
 ngx_feature="Brotli library"
 ngx_feature_path=
-ngx_feature_libs="-lbrotlienc"
+ngx_feature_libs="-lbrotlienc -lm"
 . auto/feature
 
 if [ $ngx_found = no ]; then
@@ -73,9 +73,9 @@ if [ $ngx_found = no ]; then
     ngx_feature="Brotli library in /usr/local/"
     ngx_feature_path="/usr/local/include"
     if [ $NGX_RPATH = YES ]; then
-        ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lbrotlienc"
+        ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lbrotlienc -lm"
     else
-        ngx_feature_libs="-L/usr/local/lib -lbrotlienc"
+        ngx_feature_libs="-L/usr/local/lib -lbrotlienc -lm"
     fi
     . auto/feature
 fi
@@ -85,9 +85,9 @@ if [ $ngx_found = no ]; then
     ngx_feature="Brotli library in /usr/pkg/"
     ngx_feature_path="/usr/pkg/include"
     if [ $NGX_RPATH = YES ]; then
-        ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lbrotlienc"
+        ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lbrotlienc -lm"
     else
-        ngx_feature_libs="-L/usr/pkg/lib -lbrotlienc"
+        ngx_feature_libs="-L/usr/pkg/lib -lbrotlienc -lm"
     fi
     . auto/feature
 fi
@@ -97,9 +97,9 @@ if [ $ngx_found = no ]; then
     ngx_feature="Brotli library in /opt/local/"
     ngx_feature_path="/opt/local/include"
     if [ $NGX_RPATH = YES ]; then
-        ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lbrotlienc"
+        ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lbrotlienc -lm"
     else
-        ngx_feature_libs="-L/opt/local/lib -lbrotlienc"
+        ngx_feature_libs="-L/opt/local/lib -lbrotlienc -lm"
     fi
     . auto/feature
 fi
