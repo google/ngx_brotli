@@ -21,18 +21,6 @@ Both Brotli library and nginx module are under active development.
     $ ./configure --add-module=/path/to/ngx_brotli
     $ make && make install
 
-ngx_brotli filter module depends on
-[libbrotli](https://github.com/bagder/libbrotli),
-which must be installed on the target system for it to work.
-
-Alternatively, ngx_brotli static module can be compiled into nginx by itself
-with `NGX_BROTLI_STATIC_MODULE_ONLY=1` defined in the environment:
-
-    $ cd nginx-1.x.x
-    $ export NGX_BROTLI_STATIC_MODULE_ONLY=1
-    $ ./configure --add-module=/path/to/ngx_brotli
-    $ make && make install
-
 ## Configuration directives
 
 ### `brotli_static`

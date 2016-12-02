@@ -24,191 +24,151 @@
 
 ngx_addon_name=ngx_brotli
 
-#
-# static module (no dependencies)
-#
+if [ -z "$ngx_module_link" ]; then
+cat << END
 
-if [ -n "$ngx_module_link" ]; then
-    # nginx-1.9.11+
-    ngx_module_type=HTTP
-    ngx_module_name=ngx_http_brotli_static_module
-    ngx_module_incs=
-    ngx_module_deps=
-    ngx_module_srcs="$ngx_addon_dir/src/ngx_http_brotli_static_module.c"
-    ngx_module_libs=
+$0: error: Brotli module requires recent version of NGINX (1.9.11+).
 
-    . auto/module
-else
-    HTTP_MODULES="$HTTP_MODULES \
-                  ngx_http_brotli_static_module"
-
-    NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
-                    $ngx_addon_dir/src/ngx_http_brotli_static_module.c"
-fi
-
-have=NGX_HTTP_GZIP . auto/have
-have=NGX_HTTP_BROTLI_STATIC_MODULE . auto/have
-
-if [ -n "$NGX_BROTLI_STATIC_MODULE_ONLY" ]; then
-    return
-fi
-
-#
-# filter module (depends on Brotli library)
-#
-
-# <brotli/encode.h>
-
-ngx_feature_name=
-ngx_feature_run=no
-ngx_feature_incs="#include <brotli/encode.h>"
-ngx_feature_test="BrotliEncoderCreateInstance(NULL, NULL, NULL)"
-
-# auto-discovery
-ngx_feature="Brotli library"
-ngx_feature_path=
-ngx_feature_libs="-lbrotlienc -lm"
-. auto/feature
-
-if [ $ngx_found = no ]; then
-    # FreeBSD, OpenBSD
-    ngx_feature="Brotli library in /usr/local/"
-    ngx_feature_path="/usr/local/include"
-    if [ $NGX_RPATH = YES ]; then
-        ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lbrotlienc -lm"
-    else
-        ngx_feature_libs="-L/usr/local/lib -lbrotlienc -lm"
-    fi
-    . auto/feature
-fi
-
-if [ $ngx_found = no ]; then
-    # NetBSD
-    ngx_feature="Brotli library in /usr/pkg/"
-    ngx_feature_path="/usr/pkg/include"
-    if [ $NGX_RPATH = YES ]; then
-        ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lbrotlienc -lm"
-    else
-        ngx_feature_libs="-L/usr/pkg/lib -lbrotlienc -lm"
-    fi
-    . auto/feature
-fi
-
-if [ $ngx_found = no ]; then
-    # MacPorts
-    ngx_feature="Brotli library in /opt/local/"
-    ngx_feature_path="/opt/local/include"
-    if [ $NGX_RPATH = YES ]; then
-        ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lbrotlienc -lm"
-    else
-        ngx_feature_libs="-L/opt/local/lib -lbrotlienc -lm"
-    fi
-    . auto/feature
-fi
-
-# <brotli/enc/encode.h>
-
-if [ $ngx_found = no ]; then
-    ngx_feature_name=NGX_HAVE_BROTLI_ENC_ENCODE_H
-    ngx_feature_run=no
-    ngx_feature_incs="#include <brotli/enc/encode.h>"
-    ngx_feature_test="BrotliEncoderCreateInstance(NULL, NULL, NULL)"
-
-    # auto-discovery
-    ngx_feature="Brotli library"
-    ngx_feature_path=
-    ngx_feature_libs="-lbrotlienc -lm"
-    . auto/feature
-fi
-
-if [ $ngx_found = no ]; then
-    # FreeBSD, OpenBSD
-    ngx_feature="Brotli library in /usr/local/"
-    ngx_feature_path="/usr/local/include"
-    if [ $NGX_RPATH = YES ]; then
-        ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lbrotlienc -lm"
-    else
-        ngx_feature_libs="-L/usr/local/lib -lbrotlienc -lm"
-    fi
-    . auto/feature
-fi
-
-if [ $ngx_found = no ]; then
-    # NetBSD
-    ngx_feature="Brotli library in /usr/pkg/"
-    ngx_feature_path="/usr/pkg/include"
-    if [ $NGX_RPATH = YES ]; then
-        ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lbrotlienc -lm"
-    else
-        ngx_feature_libs="-L/usr/pkg/lib -lbrotlienc -lm"
-    fi
-    . auto/feature
-fi
-
-if [ $ngx_found = no ]; then
-    # MacPorts
-    ngx_feature="Brotli library in /opt/local/"
-    ngx_feature_path="/opt/local/include"
-    if [ $NGX_RPATH = YES ]; then
-        ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lbrotlienc -lm"
-    else
-        ngx_feature_libs="-L/opt/local/lib -lbrotlienc -lm"
-    fi
-    . auto/feature
-fi
-
-if [ $ngx_found = no ]; then
-    echo "$0: error: ngx_brotli filter module requires Brotli library."
+END
     exit 1
 fi
 
-if [ $HTTP_GZIP = YES ]; then
-    next=ngx_http_gzip_filter_module
-elif echo $HTTP_FILTER_MODULES | grep ngx_pagespeed_etag_filter >/dev/null; then
-    next=ngx_pagespeed_etag_filter
-else
-    next=ngx_http_range_header_filter_module
+#
+# HTTP static module
+#
+
+ngx_module_type=HTTP
+ngx_module_name=ngx_http_brotli_static_module
+ngx_module_incs=
+ngx_module_deps=
+ngx_module_srcs="$ngx_addon_dir/src/ngx_http_brotli_static_module.c"
+ngx_module_libs=
+ngx_module_order=
+
+. auto/module
+
+have=NGX_HTTP_GZIP . auto/have
+have=NGX_HTTP_BROTLI_STATIC . auto/have
+have=NGX_HTTP_BROTLI_STATIC_MODULE . auto/have  # deprecated
+
+#
+# HTTP filter module with Brotli library
+#
+
+brotli="$ngx_addon_dir/deps/brotli"
+
+if [ ! -f "$brotli/include/brotli/encode.h" ]; then
+cat << END
+
+$0: error: \
+Brotli library is missing from the $brotli directory.
+
+Please make sure that the git submodule has been checked out:
+
+    cd $ngx_addon_dir && git submodule update --init && cd $PWD
+
+END
+    exit 1
 fi
 
-if [ -n "$ngx_module_link" ]; then
-    # nginx-1.9.11+
-    ngx_module_type=HTTP_FILTER
-    ngx_module_name=ngx_http_brotli_filter_module
-    ngx_module_incs="$ngx_feature_path"
-    ngx_module_deps=
-    ngx_module_srcs="$ngx_addon_dir/src/ngx_http_brotli_filter_module.c"
-    ngx_module_libs="$ngx_feature_libs"
-    ngx_module_order="$ngx_module_name \
-                      ngx_pagespeed \
-                      ngx_http_postpone_filter_module \
-                      ngx_http_ssi_filter_module \
-                      ngx_http_charset_filter_module \
-                      ngx_http_xslt_filter_module \
-                      ngx_http_image_filter_module \
-                      ngx_http_sub_filter_module \
-                      ngx_http_addition_filter_module \
-                      ngx_http_gunzip_filter_module \
-                      ngx_http_userid_filter_module \
-                      ngx_http_headers_filter_module"
+ngx_module_type=HTTP_FILTER
+ngx_module_name=ngx_http_brotli_filter_module
+ngx_module_incs="$brotli/include"
+ngx_module_deps="$brotli/common/constants.h \
+                 $brotli/common/dictionary.h \
+                 $brotli/common/version.h \
+                 $brotli/enc/backward_references.h \
+                 $brotli/enc/backward_references_inc.h \
+                 $brotli/enc/bit_cost.h \
+                 $brotli/enc/bit_cost_inc.h \
+                 $brotli/enc/block_encoder_inc.h \
+                 $brotli/enc/block_splitter.h \
+                 $brotli/enc/block_splitter_inc.h \
+                 $brotli/enc/brotli_bit_stream.h \
+                 $brotli/enc/cluster.h \
+                 $brotli/enc/cluster_inc.h \
+                 $brotli/enc/command.h \
+                 $brotli/enc/compress_fragment.h \
+                 $brotli/enc/compress_fragment_two_pass.h \
+                 $brotli/enc/context.h \
+                 $brotli/enc/dictionary_hash.h \
+                 $brotli/enc/entropy_encode.h \
+                 $brotli/enc/entropy_encode_static.h \
+                 $brotli/enc/fast_log.h \
+                 $brotli/enc/find_match_length.h \
+                 $brotli/enc/hash_forgetful_chain_inc.h \
+                 $brotli/enc/hash.h \
+                 $brotli/enc/hash_longest_match_inc.h \
+                 $brotli/enc/hash_longest_match_quickly_inc.h \
+                 $brotli/enc/histogram.h \
+                 $brotli/enc/histogram_inc.h \
+                 $brotli/enc/literal_cost.h \
+                 $brotli/enc/memory.h \
+                 $brotli/enc/metablock.h \
+                 $brotli/enc/metablock_inc.h \
+                 $brotli/enc/port.h \
+                 $brotli/enc/prefix.h \
+                 $brotli/enc/quality.h \
+                 $brotli/enc/ringbuffer.h \
+                 $brotli/enc/static_dict.h \
+                 $brotli/enc/static_dict_lut.h \
+                 $brotli/enc/utf8_util.h \
+                 $brotli/enc/write_bits.h"
+ngx_module_srcs="$brotli/common/dictionary.c \
+                 $brotli/enc/backward_references.c \
+                 $brotli/enc/bit_cost.c \
+                 $brotli/enc/block_splitter.c \
+                 $brotli/enc/brotli_bit_stream.c \
+                 $brotli/enc/cluster.c \
+                 $brotli/enc/compress_fragment.c \
+                 $brotli/enc/compress_fragment_two_pass.c \
+                 $brotli/enc/encode.c \
+                 $brotli/enc/entropy_encode.c \
+                 $brotli/enc/histogram.c \
+                 $brotli/enc/literal_cost.c \
+                 $brotli/enc/memory.c \
+                 $brotli/enc/metablock.c \
+                 $brotli/enc/static_dict.c \
+                 $brotli/enc/utf8_util.c \
+                 $ngx_addon_dir/src/ngx_http_brotli_filter_module.c"
+ngx_module_libs="-lm"
+ngx_module_order="$ngx_module_name \
+                  ngx_pagespeed \
+                  ngx_http_postpone_filter_module \
+                  ngx_http_ssi_filter_module \
+                  ngx_http_charset_filter_module \
+                  ngx_http_xslt_filter_module \
+                  ngx_http_image_filter_module \
+                  ngx_http_sub_filter_module \
+                  ngx_http_addition_filter_module \
+                  ngx_http_gunzip_filter_module \
+                  ngx_http_userid_filter_module \
+                  ngx_http_headers_filter_module \
+                  ngx_http_copy_filter_module \
+                  ngx_http_range_body_filter_module \
+                  ngx_http_not_modified_filter_module \
+                  ngx_http_slice_filter_module"
 
-    . auto/module
+. auto/module
 
-    if [ $ngx_module_link != DYNAMIC ]; then
-        # ngx_module_order doesn't work with static modules,
-        # so we must re-order filters here.
-        HTTP_FILTER_MODULES=`echo $HTTP_FILTER_MODULES \
-                             | sed "s/$ngx_module_name//" \
-                             | sed "s/$next/$next $ngx_module_name/"`
+if [ "$ngx_module_link" != DYNAMIC ]; then
+    # ngx_module_order doesn't work with static modules,
+    # so we must re-order filters here.
+
+    if [ "$HTTP_GZIP" = YES ]; then
+        next=ngx_http_gzip_filter_module
+    elif echo $HTTP_FILTER_MODULES | grep pagespeed_etag_filter >/dev/null; then
+        next=ngx_pagespeed_etag_filter
+    else
+        next=ngx_http_range_header_filter_module
     fi
-else
-    CORE_INCS="$CORE_INCS $ngx_feature_path"
-    CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
 
     HTTP_FILTER_MODULES=`echo $HTTP_FILTER_MODULES \
-                         | sed "s/$next/$next ngx_http_brotli_filter_module/"`
-
-    NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
-                    $ngx_addon_dir/src/ngx_http_brotli_filter_module.c"
+                         | sed "s/$ngx_module_name//" \
+                         | sed "s/$next/$next $ngx_module_name/"`
 fi
 
-have=NGX_HTTP_BROTLI_FILTER_MODULE . auto/have
+CFLAGS="$CFLAGS -Wno-deprecated-declarations"
+
+have=NGX_HTTP_BROTLI_FILTER . auto/have
+have=NGX_HTTP_BROTLI_FILTER_MODULE . auto/have  # deprecated
