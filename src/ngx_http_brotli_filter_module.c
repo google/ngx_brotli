@@ -18,17 +18,18 @@
 
 
 typedef struct {
-    ngx_flag_t            enable;
+    ngx_flag_t                enable;
 
-    ngx_hash_t            types;
+    ngx_hash_t                types;
 
-    ngx_bufs_t            bufs;
+    ngx_bufs_t                bufs;
 
-    ngx_int_t             quality;
-    size_t                win_bits;
-    ssize_t               min_length;
+    ngx_http_complex_value_t *quality;
 
-    ngx_array_t          *types_keys;
+    size_t                    win_bits;
+    ssize_t                   min_length;
+
+    ngx_array_t              *types_keys;
 } ngx_http_brotli_conf_t;
 
 
@@ -90,11 +91,6 @@ static ngx_int_t ngx_http_brotli_filter_init(ngx_conf_t *cf);
 
 static char *ngx_http_brotli_window(ngx_conf_t *cf, void *post, void *data);
 
-
-static ngx_conf_num_bounds_t  ngx_http_brotli_comp_level_bounds = {
-    ngx_conf_check_num_bounds, 0, 11
-};
-
 static ngx_conf_post_handler_pt  ngx_http_brotli_window_p =
     ngx_http_brotli_window;
 
@@ -125,10 +121,10 @@ static ngx_command_t  ngx_http_brotli_filter_commands[] = {
 
     { ngx_string("brotli_comp_level"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
+      ngx_http_set_complex_value_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_brotli_conf_t, quality),
-      &ngx_http_brotli_comp_level_bounds },
+      NULL },
 
     { ngx_string("brotli_window"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -183,7 +179,6 @@ static ngx_str_t  ngx_http_brotli_ratio = ngx_string("brotli_ratio");
 
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
-
 
 static ngx_int_t
 ngx_http_brotli_header_filter(ngx_http_request_t *r)
@@ -389,6 +384,36 @@ failed:
     return NGX_ERROR;
 }
 
+static ngx_int_t
+ngx_http_brotli_get_quality(ngx_http_brotli_conf_t *conf, ngx_http_request_t *r) {
+    ngx_str_t  quality_str;
+    ngx_int_t  quality;
+
+    if (conf->quality == NULL) {
+        return 6;
+    }
+
+    if (ngx_http_complex_value(r, conf->quality, &quality_str) != NGX_OK) {
+        return NGX_CONF_UNSET;
+    }
+
+    quality = ngx_atoi(quality_str.data, quality_str.len);
+    if (quality == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "brotli_comp_level value \"%V\" is not a valid number",
+                      &quality_str);
+        return NGX_CONF_UNSET;
+    }
+
+    if (quality < 0 || quality > 11) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "brotli_comp_level value %uD must be between 0 and 11",
+                      (uint32_t) quality);
+        return NGX_CONF_UNSET;
+    }
+
+    return quality;
+}
 
 static BrotliEncoderState *
 ngx_http_brotli_filter_create_encoder(ngx_http_request_t *r)
@@ -397,6 +422,7 @@ ngx_http_brotli_filter_create_encoder(ngx_http_request_t *r)
     BrotliEncoderState      *encoder;
     ngx_http_brotli_ctx_t   *ctx;
     ngx_http_brotli_conf_t  *conf;
+    ngx_int_t                quality;
 
     encoder = BrotliEncoderCreateInstance(ngx_http_brotli_filter_alloc,
                                           ngx_http_brotli_filter_free,
@@ -409,12 +435,17 @@ ngx_http_brotli_filter_create_encoder(ngx_http_request_t *r)
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_brotli_filter_module);
 
+    quality = ngx_http_brotli_get_quality(conf, r);
+    if (quality == NGX_CONF_UNSET) {
+	goto failed;
+    }
+
     if (!BrotliEncoderSetParameter(encoder, BROTLI_PARAM_QUALITY,
-                                   (uint32_t) conf->quality))
+                                   (uint32_t) quality))
     {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                       "BrotliEncoderSetParameter(QUALITY, %uD) failed",
-                      (uint32_t) conf->quality);
+                      (uint32_t) quality);
         goto failed;
     }
 
@@ -440,7 +471,7 @@ ngx_http_brotli_filter_create_encoder(ngx_http_request_t *r)
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "brotli encoder: lvl:%i win:%d blk:%uz",
-                   conf->quality, (1 << wbits),
+                   quality, (1 << wbits),
                    BrotliEncoderInputBlockSize(encoder));
 
     return encoder;
@@ -846,7 +877,6 @@ ngx_http_brotli_create_conf(ngx_conf_t *cf)
 
     conf->enable = NGX_CONF_UNSET;
 
-    conf->quality = NGX_CONF_UNSET;
     conf->win_bits = NGX_CONF_UNSET_SIZE;
     conf->min_length = NGX_CONF_UNSET;
 
@@ -865,7 +895,10 @@ ngx_http_brotli_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_bufs_value(conf->bufs, prev->bufs,
                               (128 * 1024) / ngx_pagesize, ngx_pagesize);
 
-    ngx_conf_merge_value(conf->quality, prev->quality, 6);
+    if (conf->quality == NULL) {
+        conf->quality = prev->quality;
+    }
+
     ngx_conf_merge_size_value(conf->win_bits, prev->win_bits, 19);
     ngx_conf_merge_value(conf->min_length, prev->min_length, 20);
 
