@@ -146,7 +146,7 @@ ngx_module_deps="$brotli/include/brotli/encode.h \
                  $brotli/include/brotli/port.h \
                  $brotli/include/brotli/types.h"
 ngx_module_srcs="$ngx_addon_dir/src/ngx_http_brotli_filter_module.c"
-ngx_module_libs="-lbrotlienc-lm"
+ngx_module_libs="-lbrotlienc -lm"
 
 fi # encode.h in /usr/local
 
