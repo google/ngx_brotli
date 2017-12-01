@@ -55,6 +55,14 @@ have=NGX_HTTP_BROTLI_STATIC_MODULE . auto/have  # deprecated
 # HTTP filter module with Brotli library
 #
 
+
+ngx_module_type=HTTP_FILTER
+ngx_module_name=ngx_http_brotli_filter_module
+
+brotli="/usr/local"
+
+if [ ! -f "$brotli/include/brotli/encode.h" ]; then
+
 brotli="$ngx_addon_dir/deps/brotli"
 
 if [ ! -f "$brotli/include/brotli/encode.h" ]; then
@@ -71,8 +79,6 @@ END
     exit 1
 fi
 
-ngx_module_type=HTTP_FILTER
-ngx_module_name=ngx_http_brotli_filter_module
 ngx_module_incs="$brotli/include"
 ngx_module_deps="$brotli/common/constants.h \
                  $brotli/common/dictionary.h \
@@ -132,6 +138,18 @@ ngx_module_srcs="$brotli/common/dictionary.c \
                  $brotli/enc/utf8_util.c \
                  $ngx_addon_dir/src/ngx_http_brotli_filter_module.c"
 ngx_module_libs="-lm"
+
+else # encode.h in /usr/local
+
+ngx_module_incs="$brotli/include"
+ngx_module_deps="$brotli/include/brotli/encode.h \
+                 $brotli/include/brotli/port.h \
+                 $brotli/include/brotli/types.h"
+ngx_module_srcs="$ngx_addon_dir/src/ngx_http_brotli_filter_module.c"
+ngx_module_libs="-lbrotlienc -lm"
+
+fi # encode.h in /usr/local
+
 ngx_module_order="$ngx_module_name \
                   ngx_pagespeed \
                   ngx_http_postpone_filter_module \
