@@ -63,7 +63,7 @@ brotli="/usr/local"
 
 if [ ! -f "$brotli/include/brotli/encode.h" ]; then
 
-brotli="$ngx_addon_dir/deps/brotli"
+brotli="$ngx_addon_dir/deps/brotli/c"
 
 if [ ! -f "$brotli/include/brotli/encode.h" ]; then
 cat << END
@@ -84,6 +84,7 @@ ngx_module_deps="$brotli/common/constants.h \
                  $brotli/common/dictionary.h \
                  $brotli/common/version.h \
                  $brotli/enc/backward_references.h \
+                 $brotli/enc/backward_references_hq.h \
                  $brotli/enc/backward_references_inc.h \
                  $brotli/enc/bit_cost.h \
                  $brotli/enc/bit_cost_inc.h \
@@ -102,10 +103,12 @@ ngx_module_deps="$brotli/common/constants.h \
                  $brotli/enc/entropy_encode_static.h \
                  $brotli/enc/fast_log.h \
                  $brotli/enc/find_match_length.h \
-                 $brotli/enc/hash_forgetful_chain_inc.h \
                  $brotli/enc/hash.h \
+                 $brotli/enc/hash_forgetful_chain_inc.h \
+                 $brotli/enc/hash_longest_match64_inc.h \
                  $brotli/enc/hash_longest_match_inc.h \
                  $brotli/enc/hash_longest_match_quickly_inc.h \
+                 $brotli/enc/hash_to_binary_tree_inc.h \
                  $brotli/enc/histogram.h \
                  $brotli/enc/histogram_inc.h \
                  $brotli/enc/literal_cost.h \
@@ -122,12 +125,14 @@ ngx_module_deps="$brotli/common/constants.h \
                  $brotli/enc/write_bits.h"
 ngx_module_srcs="$brotli/common/dictionary.c \
                  $brotli/enc/backward_references.c \
+                 $brotli/enc/backward_references_hq.c \
                  $brotli/enc/bit_cost.c \
                  $brotli/enc/block_splitter.c \
                  $brotli/enc/brotli_bit_stream.c \
                  $brotli/enc/cluster.c \
                  $brotli/enc/compress_fragment.c \
                  $brotli/enc/compress_fragment_two_pass.c \
+                 $brotli/enc/dictionary_hash.c \
                  $brotli/enc/encode.c \
                  $brotli/enc/entropy_encode.c \
                  $brotli/enc/histogram.c \
