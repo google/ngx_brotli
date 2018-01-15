@@ -468,8 +468,8 @@ ngx_http_brotli_filter_push(ngx_http_request_t *r,
 
     input_size = ngx_buf_size(b);
     if (input_size == 0) {
+        ctx->in = ctx->in->next;
         if (!ctx->flush && !ctx->last) {
-            ctx->in = ctx->in->next;
             return NGX_AGAIN;
         }
     }
