@@ -524,6 +524,7 @@ ngx_http_brotli_filter_pull(ngx_http_request_t *r, ngx_http_brotli_ctx_t *ctx)
         ngx_memcpy(ctx->out_buf->last, out, size);
 
         ctx->out_buf->last += size;
+        ctx->bytes_out += size;
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "brotli out: %p, size:%uz",
