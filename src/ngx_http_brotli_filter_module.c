@@ -384,7 +384,7 @@ static ngx_int_t ngx_http_brotli_body_filter(
 
     if (BrotliEncoderIsFinished(ctx->encoder)) {
       ctx->success = 1;
-      return NGX_OK;
+      return NGX_DONE;
     }
 
     if (ctx->in == NULL) {
