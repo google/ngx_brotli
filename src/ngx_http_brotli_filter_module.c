@@ -343,7 +343,9 @@ static ngx_int_t ngx_http_brotli_body_filter(
       }
       if (rc == NGX_OK) {
         if (ctx->output_busy) {
-          return NGX_OK;
+          /* TODO: for some reason, after returning NGX_OK / NGX_AGAIN outer
+                   filter never gives this filter a second try. */
+          continue;
         } else {
           continue;
         }
@@ -391,6 +393,7 @@ static ngx_int_t ngx_http_brotli_body_filter(
       return NGX_OK;
     }
 
+    /* TODO: coalesce tiny inputs, if they are not last/flush. */
     input_size = ngx_buf_size(ctx->in->buf);
     if (input_size == 0) {
       if (!ctx->in->buf->last_buf && !ctx->in->buf->flush) {
