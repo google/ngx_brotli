@@ -331,6 +331,7 @@ static ngx_int_t ngx_http_brotli_body_filter(
      - if encoder is finished (and all output is consumed) - stop
      - if there is more input - push it to encoder */
   for (;;) {
+    ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0, "NO-OP");
     if (ctx->output_busy || ctx->output_ready) {
       rc = ngx_http_next_body_filter(r,
           ctx->output_ready ? ctx->out_chain : NULL);
