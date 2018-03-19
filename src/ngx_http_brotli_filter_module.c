@@ -331,7 +331,6 @@ static ngx_int_t ngx_http_brotli_body_filter(
      - if encoder is finished (and all output is consumed) - stop
      - if there is more input - push it to encoder */
   for (;;) {
-    ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0, "NO-OP");
     if (ctx->output_busy || ctx->output_ready) {
       rc = ngx_http_next_body_filter(r,
           ctx->output_ready ? ctx->out_chain : NULL);
@@ -343,15 +342,15 @@ static ngx_int_t ngx_http_brotli_body_filter(
         ctx->output_busy = 0;
       }
       if (rc == NGX_OK) {
+        continue;
+      } else if (rc == NGX_AGAIN) {
         if (ctx->output_busy) {
-          /* TODO: for some reason, after returning NGX_OK / NGX_AGAIN outer
-                   filter never gives this filter a second try. */
-          continue;
+          /* Can't continue compression, let the outer filer decide. */
+          return rc;
         } else {
+          /* Inner filter has given up, but we can continue processing. */
           continue;
         }
-      } else if (rc == NGX_AGAIN) {
-        continue;
       } else {
         ctx->closed = 1;
         return NGX_ERROR;
