@@ -55,7 +55,15 @@ have=NGX_HTTP_BROTLI_STATIC_MODULE . auto/have  # deprecated
 # HTTP filter module with Brotli library
 #
 
-brotli="$ngx_addon_dir/deps/brotli"
+
+ngx_module_type=HTTP_FILTER
+ngx_module_name=ngx_http_brotli_filter_module
+
+brotli="/usr/local"
+
+if [ ! -f "$brotli/include/brotli/encode.h" ]; then
+
+brotli="$ngx_addon_dir/deps/brotli/c"
 
 if [ ! -f "$brotli/include/brotli/encode.h" ]; then
 cat << END
@@ -71,13 +79,12 @@ END
     exit 1
 fi
 
-ngx_module_type=HTTP_FILTER
-ngx_module_name=ngx_http_brotli_filter_module
 ngx_module_incs="$brotli/include"
 ngx_module_deps="$brotli/common/constants.h \
                  $brotli/common/dictionary.h \
                  $brotli/common/version.h \
                  $brotli/enc/backward_references.h \
+                 $brotli/enc/backward_references_hq.h \
                  $brotli/enc/backward_references_inc.h \
                  $brotli/enc/bit_cost.h \
                  $brotli/enc/bit_cost_inc.h \
@@ -96,10 +103,12 @@ ngx_module_deps="$brotli/common/constants.h \
                  $brotli/enc/entropy_encode_static.h \
                  $brotli/enc/fast_log.h \
                  $brotli/enc/find_match_length.h \
-                 $brotli/enc/hash_forgetful_chain_inc.h \
                  $brotli/enc/hash.h \
+                 $brotli/enc/hash_forgetful_chain_inc.h \
+                 $brotli/enc/hash_longest_match64_inc.h \
                  $brotli/enc/hash_longest_match_inc.h \
                  $brotli/enc/hash_longest_match_quickly_inc.h \
+                 $brotli/enc/hash_to_binary_tree_inc.h \
                  $brotli/enc/histogram.h \
                  $brotli/enc/histogram_inc.h \
                  $brotli/enc/literal_cost.h \
@@ -116,12 +125,14 @@ ngx_module_deps="$brotli/common/constants.h \
                  $brotli/enc/write_bits.h"
 ngx_module_srcs="$brotli/common/dictionary.c \
                  $brotli/enc/backward_references.c \
+                 $brotli/enc/backward_references_hq.c \
                  $brotli/enc/bit_cost.c \
                  $brotli/enc/block_splitter.c \
                  $brotli/enc/brotli_bit_stream.c \
                  $brotli/enc/cluster.c \
                  $brotli/enc/compress_fragment.c \
                  $brotli/enc/compress_fragment_two_pass.c \
+                 $brotli/enc/dictionary_hash.c \
                  $brotli/enc/encode.c \
                  $brotli/enc/entropy_encode.c \
                  $brotli/enc/histogram.c \
@@ -132,6 +143,18 @@ ngx_module_srcs="$brotli/common/dictionary.c \
                  $brotli/enc/utf8_util.c \
                  $ngx_addon_dir/src/ngx_http_brotli_filter_module.c"
 ngx_module_libs="-lm"
+
+else # encode.h in /usr/local
+
+ngx_module_incs="$brotli/include"
+ngx_module_deps="$brotli/include/brotli/encode.h \
+                 $brotli/include/brotli/port.h \
+                 $brotli/include/brotli/types.h"
+ngx_module_srcs="$ngx_addon_dir/src/ngx_http_brotli_filter_module.c"
+ngx_module_libs="-lbrotlienc -lm"
+
+fi # encode.h in /usr/local
+
 ngx_module_order="$ngx_module_name \
                   ngx_pagespeed \
                   ngx_http_postpone_filter_module \
