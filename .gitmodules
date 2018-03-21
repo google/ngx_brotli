@@ -1,3 +1,6 @@
 [submodule "deps/brotli"]
 	path = deps/brotli
 	url = https://github.com/google/brotli.git
+[submodule "nginx"]
+	path = nginx
+	url = https://github.com/nginx/nginx.git
