@@ -57,9 +57,7 @@ Responses with the `text/html` MIME type are always compressed.
 - **default**: `32 4k|16 8k`
 - **context**: `http`, `server`, `location`
 
-Sets the `number` and `size` of buffers used to compress a response.
-By default, the buffer size is equal to one memory page.
-This is either `4k` or `8k`, depending on a platform.
+**Deprecated**, ignored.
 
 ### `brotli_comp_level`
 
