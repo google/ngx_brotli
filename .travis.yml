@@ -1,0 +1,15 @@
+language: c
+sudo: false
+matrix:
+  include:
+    - os: linux
+
+script:
+- script/.travis-compile.sh
+- script/.travis-before-test.sh
+- script/.travis-test.sh
+after_success:
+- killall nginx
+after_failure:
+- killall nginx
+
