@@ -75,7 +75,10 @@ ngx_module_type=HTTP_FILTER
 ngx_module_name=ngx_http_brotli_filter_module
 ngx_module_incs="$brotli/include"
 ngx_module_deps="$brotli/common/constants.h \
+                 $brotli/common/context.h \
                  $brotli/common/dictionary.h \
+                 $brotli/common/platform.h \
+                 $brotli/common/transform.h \
                  $brotli/common/version.h \
                  $brotli/enc/backward_references.h \
                  $brotli/enc/backward_references_inc.h \
@@ -90,8 +93,8 @@ ngx_module_deps="$brotli/common/constants.h \
                  $brotli/enc/command.h \
                  $brotli/enc/compress_fragment.h \
                  $brotli/enc/compress_fragment_two_pass.h \
-                 $brotli/enc/context.h \
                  $brotli/enc/dictionary_hash.h \
+                 $brotli/enc/encoder_dict.h \
                  $brotli/enc/entropy_encode.h \
                  $brotli/enc/entropy_encode_static.h \
                  $brotli/enc/fast_log.h \
@@ -106,7 +109,7 @@ ngx_module_deps="$brotli/common/constants.h \
                  $brotli/enc/memory.h \
                  $brotli/enc/metablock.h \
                  $brotli/enc/metablock_inc.h \
-                 $brotli/enc/port.h \
+                 $brotli/enc/params.h \
                  $brotli/enc/prefix.h \
                  $brotli/enc/quality.h \
                  $brotli/enc/ringbuffer.h \
@@ -115,6 +118,7 @@ ngx_module_deps="$brotli/common/constants.h \
                  $brotli/enc/utf8_util.h \
                  $brotli/enc/write_bits.h"
 ngx_module_srcs="$brotli/common/dictionary.c \
+                 $brotli/common/transform.c \
                  $brotli/enc/backward_references.c \
                  $brotli/enc/bit_cost.c \
                  $brotli/enc/block_splitter.c \
@@ -123,6 +127,7 @@ ngx_module_srcs="$brotli/common/dictionary.c \
                  $brotli/enc/compress_fragment.c \
                  $brotli/enc/compress_fragment_two_pass.c \
                  $brotli/enc/encode.c \
+                 $brotli/enc/encoder_dict.c \
                  $brotli/enc/entropy_encode.c \
                  $brotli/enc/histogram.c \
                  $brotli/enc/literal_cost.c \

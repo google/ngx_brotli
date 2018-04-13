@@ -11,6 +11,8 @@ ngx_brotli is a set of two nginx modules:
 - ngx_brotli filter module - used to compress responses on-the-fly,
 - ngx_brotli static module - used to serve pre-compressed files.
 
+[![TravisCI Build Status](https://travis-ci.org/eustas/ngx_brotli.svg?branch=master)](https://travis-ci.org/eustas/ngx_brotli)
+
 ## Status
 
 Both Brotli library and nginx module are under active development.
