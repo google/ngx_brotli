@@ -92,8 +92,6 @@ static ngx_int_t ngx_http_brotli_filter_ensure_stream_initialized(
     ngx_http_request_t* r, ngx_http_brotli_ctx_t* ctx);
 /* Marks instance as closed and performs cleanup. */
 static void ngx_http_brotli_filter_close(ngx_http_brotli_ctx_t* ctx);
-/* Deallocates encoder and marks filter instance as closed. */
-static void ngx_http_brotli_filter_cleanup(void* data);
 
 static void* ngx_http_brotli_filter_alloc(void* opaque, size_t size);
 static void ngx_http_brotli_filter_free(void* opaque, void* address);
@@ -469,19 +467,11 @@ static ngx_int_t ngx_http_brotli_filter_ensure_stream_initialized(
   ngx_http_brotli_conf_t* conf;
   BROTLI_BOOL ok;
   size_t wbits;
-  ngx_pool_cleanup_t* cleanup_hook;
 
   if (ctx->initialized) {
     return NGX_OK;
   }
   ctx->initialized = 1;
-
-  cleanup_hook = ngx_pool_cleanup_add(r->pool, 0);
-  if (cleanup_hook == NULL) {
-    return NGX_ERROR;
-  }
-  cleanup_hook->handler = ngx_http_brotli_filter_cleanup;
-  cleanup_hook->data = ctx;
 
   conf = ngx_http_get_module_loc_conf(r, ngx_http_brotli_filter_module);
 
@@ -570,13 +560,6 @@ static void ngx_http_brotli_filter_free(void* opaque, void* address) {
 
 static void ngx_http_brotli_filter_close(ngx_http_brotli_ctx_t* ctx) {
   ctx->closed = 1;
-  if (!ctx->output_busy) {
-    ngx_http_brotli_filter_cleanup(ctx);
-  }
-}
-
-static void ngx_http_brotli_filter_cleanup(void* data) {
-  ngx_http_brotli_ctx_t* ctx = data;
   if (ctx->encoder) {
     BrotliEncoderDestroyInstance(ctx->encoder);
     ctx->encoder = NULL;
