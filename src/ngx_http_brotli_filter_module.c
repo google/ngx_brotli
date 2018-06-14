@@ -403,7 +403,7 @@ static ngx_int_t ngx_http_brotli_body_filter(
       ctx->success = 1;
       r->connection->buffered &= ~NGX_HTTP_BROTLI_BUFFERED;
       ngx_http_brotli_filter_close(ctx);
-      return NGX_DONE;
+      return NGX_OK;
     }
 
     if (ctx->in == NULL) {
