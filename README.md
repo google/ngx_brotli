@@ -11,6 +11,8 @@ ngx_brotli is a set of two nginx modules:
 - ngx_brotli filter module - used to compress responses on-the-fly,
 - ngx_brotli static module - used to serve pre-compressed files.
 
+[![TravisCI Build Status](https://travis-ci.org/eustas/ngx_brotli.svg?branch=master)](https://travis-ci.org/eustas/ngx_brotli)
+
 ## Status
 
 Both Brotli library and nginx module are under active development.
@@ -57,9 +59,7 @@ Responses with the `text/html` MIME type are always compressed.
 - **default**: `32 4k|16 8k`
 - **context**: `http`, `server`, `location`
 
-Sets the `number` and `size` of buffers used to compress a response.
-By default, the buffer size is equal to one memory page.
-This is either `4k` or `8k`, depending on a platform.
+**Deprecated**, ignored.
 
 ### `brotli_comp_level`
 
