@@ -322,16 +322,18 @@ static ngx_int_t
 ngx_http_brotli_accept_encoding(ngx_str_t *ae)
 {
     u_char  *p;
+    char* encoding = "br";
+    size_t encoding_length = ngx_strlen("br");
 
-    p = ngx_strcasestrn(ae->data, "br", sizeof("br") - 2);
+    p = ngx_strcasestrn(ae->data, encoding, encoding_length);
     if (p == NULL) {
         return NGX_DECLINED;
     }
 
+    /* Check that encoding is not a suffix of different entry. */
     if (p == ae->data || (*(p - 1) == ',' || *(p - 1) == ' ')) {
-
-        p += sizeof("br") - 1;
-
+        p += encoding_length;
+        /* Check that encoding is not a prefix of different entry. */
         if (p == ae->data + ae->len || *p == ',' || *p == ';' || *p == ' ') {
             return NGX_OK;
         }

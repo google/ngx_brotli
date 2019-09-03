@@ -603,7 +603,7 @@ static ngx_int_t ngx_http_brotli_check_request(ngx_http_request_t* r) {
 
   rc = NGX_DECLINED;
   /* TODO(eustas): this should be done in a loop. */
-  cursor = ngx_strcasestrn(encodings->data, encoding, encoding_length - 1);
+  cursor = ngx_strcasestrn(encodings->data, encoding, encoding_length);
   if (cursor != NULL) {
     if (cursor == encodings->data) {
       before = ' ';
@@ -617,6 +617,7 @@ static ngx_int_t ngx_http_brotli_check_request(ngx_http_request_t* r) {
       after = *(cursor + encoding_length);
     }
 
+    /* Check prefix / suffix conditions. */
     if ((before == ',' || before == ' ') &&
         (after == ',' || after == ';' || after == ' ')) {
       rc = NGX_OK;
