@@ -5,19 +5,22 @@ set -ex
 ROOT=`pwd`
 
 # Clone nginx read-only git repository.
-git clone https://github.com/nginx/nginx.git
+if [ ! -d "nginx" ]; then
+  git clone https://github.com/nginx/nginx.git
+fi
 
 # Build nginx + filter module.
 cd $ROOT/nginx
+# Pro memoria: --with-debug
 ./auto/configure --prefix=$ROOT/script/test --add-module=$ROOT
-make
+make -j 16
 
 # Build brotli CLI.
 cd $ROOT/deps/brotli
 mkdir out
 cd out
 cmake ..
-make brotli
+make -j 16 brotli
 
 # Restore status-quo.
 cd $ROOT
