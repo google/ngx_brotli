@@ -417,14 +417,13 @@ static ngx_int_t ngx_http_brotli_body_filter(ngx_http_request_t* r,
       ctx->bytes_out += available_output;
       ctx->out_buf->last_buf = 0;
       ctx->out_buf->flush = 0;
-      if (ctx->end_of_input) {
+      if (ctx->end_of_input && BrotliEncoderIsFinished(ctx->encoder)) {
         ctx->out_buf->last_buf = 1;
         r->connection->buffered &= ~NGX_HTTP_BROTLI_BUFFERED;
       } else if (ctx->end_of_block) {
         ctx->out_buf->flush = 1;
         r->connection->buffered &= ~NGX_HTTP_BROTLI_BUFFERED;
       }
-      ctx->end_of_input = 0;
       ctx->end_of_block = 0;
       ctx->output_ready = 1;
       ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -438,6 +437,21 @@ static ngx_int_t ngx_http_brotli_body_filter(ngx_http_request_t* r,
       r->connection->buffered &= ~NGX_HTTP_BROTLI_BUFFERED;
       ngx_http_brotli_filter_close(ctx);
       return NGX_OK;
+    }
+
+    if (ctx->end_of_input) {
+      // Ask the encoder to dump the leftover.
+      available_input = 0;
+      available_output = 0;
+      ok = BrotliEncoderCompressStream(ctx->encoder, BROTLI_OPERATION_FINISH,
+                                       &available_input, NULL,
+                                       &available_output, NULL, NULL);
+      r->connection->buffered |= NGX_HTTP_BROTLI_BUFFERED;
+      if (!ok) {
+        ngx_http_brotli_filter_close(ctx);
+        return NGX_ERROR;
+      }
+      continue;
     }
 
     if (ctx->in == NULL) {
