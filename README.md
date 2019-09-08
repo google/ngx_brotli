@@ -13,6 +13,23 @@ ngx_brotli is a set of two nginx modules:
 
 [![TravisCI Build Status](https://travis-ci.org/google/ngx_brotli.svg?branch=master)](https://travis-ci.org/google/ngx_brotli)
 
+## Table of Contents
+
+- [Status](#status)
+- [Installation](#installation)
+- [Configuration directives](#configuration-directives)
+  - [`brotli_static`](#brotli_static)
+  - [`brotli`](#brotli)
+  - [`brotli_types`](#brotli_types)
+  - [`brotli_buffers`](#brotli_buffers)
+  - [`brotli_comp_level`](#brotli_comp_level)
+  - [`brotli_window`](#brotli_window)
+  - [`brotli_min_length`](#brotli_min_length)
+- [Variables](#variables)
+  - [`$brotli_ratio`](#brotli_ratio)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Status
 
 Both Brotli library and nginx module are under active development.
