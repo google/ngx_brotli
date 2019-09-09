@@ -84,7 +84,7 @@ Responses with the `text/html` MIME type are always compressed.
 - **default**: `6`
 - **context**: `http`, `server`, `location`
 
-Sets Brotli quality (compression) `level`.
+Sets on-the-fly compression Brotli quality (compression) `level`.
 Acceptable values are in the range from `0` to `11`.
 
 ### `brotli_window`
