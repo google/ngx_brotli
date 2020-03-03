@@ -112,6 +112,14 @@ echo "Test: A-E: 'br ; q = 0.000'"
 curl -s -H 'Accept-encoding: br ; q = 0.000' -o ./ae-11.txt $SERVER/small.txt
 STATUS=$(expect_equal "$STATUS" $FILES/small.txt ./ae-11.txt)
 
+echo "Test: A-E: 'bar'"
+curl -s -H 'Accept-encoding: bar' -o ./ae-12.txt $SERVER/small.html
+STATUS=$(expect_equal "$STATUS" $FILES/small.html ./ae-12.txt)
+
+echo "Test: A-E: 'b'"
+curl -s -H 'Accept-encoding: b' -o ./ae-13.txt $SERVER/small.html
+STATUS=$(expect_equal "$STATUS" $FILES/small.html ./ae-13.txt)
+
 # Report.
 
 FAILED=$(get_failed $STATUS)
