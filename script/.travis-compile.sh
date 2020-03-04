@@ -12,7 +12,10 @@ fi
 # Build nginx + filter module.
 cd $ROOT/nginx
 # Pro memoria: --with-debug
-./auto/configure --prefix=$ROOT/script/test --add-module=$ROOT
+./auto/configure \
+    --prefix=$ROOT/script/test \
+    --with-http_v2_module \
+    --add-module=$ROOT
 make -j 16
 
 # Build brotli CLI.
