@@ -336,6 +336,7 @@ static ngx_int_t ngx_http_brotli_body_filter(ngx_http_request_t* r,
   int rc;
   ngx_http_brotli_ctx_t* ctx;
   size_t available_output;
+  ptrdiff_t available_busy_output;
   size_t input_size;
   size_t available_input;
   const uint8_t* next_input_byte;
@@ -375,6 +376,12 @@ static ngx_int_t ngx_http_brotli_body_filter(ngx_http_request_t* r,
      - if there is more input - push it to encoder */
   for (;;) {
     if (ctx->output_busy || ctx->output_ready) {
+      if (ctx->output_busy) {
+        available_busy_output = ngx_buf_size(ctx->out_buf);
+      } else {
+        available_busy_output = 0;
+      }
+
       rc = ngx_http_next_body_filter(r,
                                      ctx->output_ready ? ctx->out_chain : NULL);
       if (ctx->output_ready) {
@@ -385,6 +392,11 @@ static ngx_int_t ngx_http_brotli_body_filter(ngx_http_request_t* r,
         ctx->output_busy = 0;
       }
       if (rc == NGX_OK) {
+        if (ctx->output_busy &&
+            available_busy_output == ngx_buf_size(ctx->out_buf)) {
+          r->connection->buffered |= NGX_HTTP_BROTLI_BUFFERED;
+          return NGX_AGAIN;
+        }
         continue;
       } else if (rc == NGX_AGAIN) {
         if (ctx->output_busy) {
