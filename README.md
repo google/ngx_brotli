@@ -27,6 +27,7 @@ ngx_brotli is a set of two nginx modules:
   - [`brotli_min_length`](#brotli_min_length)
 - [Variables](#variables)
   - [`$brotli_ratio`](#brotli_ratio)
+- [Sample configuration](#sample-configuration)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -44,7 +45,11 @@ Both Brotli library and nginx module are under active development.
 
 You will need to use **exactly** the same `./configure` arguments as your Nginx configuration and append `--with-compat --add-dynamic-module=/path/to/ngx_brotli` to the end, otherwise you will get a "module is not binary compatible" error on startup. You can run `nginx -V` to get the configuration arguments for your Nginx installation.
 
-`make modules` will result in `ngx_http_brotli_filter_module.so` and `ngx_http_brotli_static_module.so` in the `objs` directory. Copy these to `/usr/lib/nginx/modules/` then add the `load_module` lines above to `nginx.conf`.
+`make modules` will result in `ngx_http_brotli_filter_module.so` and `ngx_http_brotli_static_module.so` in the `objs` directory. Copy these to `/usr/lib/nginx/modules/` then add the `load_module` directives to `nginx.conf` (above the http block):
+```nginx
+load_module modules/ngx_http_brotli_filter_module.so;
+load_module modules/ngx_http_brotli_static_module.so;
+```
 
 ### Statically compiled
 
@@ -125,6 +130,19 @@ The length is determined only from the `Content-Length` response header field.
 
 Achieved compression ratio, computed as the ratio between the original
 and compressed response sizes.
+
+## Sample configuration
+
+```
+brotli on;
+brotli_comp_level 6;
+brotli_static on;
+brotli_types application/atom+xml application/javascript application/json application/rss+xml
+             application/vnd.ms-fontobject application/x-font-opentype application/x-font-truetype
+             application/x-font-ttf application/x-javascript application/xhtml+xml application/xml
+             font/eot font/opentype font/otf font/truetype image/svg+xml image/vnd.microsoft.icon
+             image/x-icon image/x-win-bitmap text/css text/javascript text/plain text/xml;
+```
 
 ## Contributing
 
