@@ -162,15 +162,15 @@ static ngx_int_t handler(ngx_http_request_t* req) {
 
   /* Get configuration and check if module is disabled. */
   cfg = ngx_http_get_module_loc_conf(req, ngx_http_brotli_static_module);
-  if (cfg->enable == NGX_HTTP_BROTLI_STATIC_OFF) return NGX_DECLINED;
+  if (cfg->enable == NGX_HTTP_BROTLI_STATIC_OFF) {
+    return NGX_DECLINED;
+  }
 
-  if (cfg->enable == NGX_HTTP_BROTLI_STATIC_ALWAYS) {
-    /* Ignore request properties (e.g. Accept-Encoding). */
-  } else {
-    /* NGX_HTTP_BROTLI_STATIC_ON */
-    req->gzip_vary = 1;
+  if (cfg->enable == NGX_HTTP_BROTLI_STATIC_ON) {
     rc = check_eligility(req);
     if (rc != NGX_OK) return NGX_DECLINED;
+  } else {
+        /* always */
   }
 
   /* Get path and append the suffix. */
@@ -225,6 +225,14 @@ static ngx_int_t handler(ngx_http_request_t* req) {
     ngx_log_error(level, log, file_info.err, "%s \"%s\" failed",
                   file_info.failed, path.data);
     return NGX_DECLINED;
+  }
+
+  if (cfg->enable == NGX_HTTP_BROTLI_STATIC_ON) {
+	 req->gzip_vary = 1;
+
+	 if (rc != NGX_OK) {
+		return NGX_DECLINED;
+	 }
   }
 
   /* So far so good. */
