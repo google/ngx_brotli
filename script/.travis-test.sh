@@ -47,6 +47,16 @@ expect_br_equal() {
   fi
 }
 
+expect_gz_equal() {
+  expected=$1
+  actual_gz=$2
+  if gzip -dfk ./${actual_gz}.gz; then
+    expect_equal $expected $actual_gz
+  else
+    add_result "FAIL (decompression)"
+  fi
+}
+
 ################################################################################
 
 # Start default server.
@@ -124,6 +134,27 @@ echo $HR
 echo "Stopping default NGINX"
 # Stop server.
 $NGINX -c $ROOT/script/test.conf -s stop
+
+################################################################################
+
+echo "Starting brotli_static NGINX"
+$NGINX -c $ROOT/script/test_static.conf
+
+# Run tests.
+echo $HR
+
+echo "Test: static .br files are served"
+$CURL -H 'Accept-encoding: gzip, br' -o tmp/static-small.html.br $SERVER/small.html
+expect_equal $FILES/small.html.br tmp/static-small.html.br
+
+echo "Test: dynamic gzip is used when .br doesn't exist"
+$CURL -H 'Accept-encoding: gzip, br' -o tmp/static-small.txt.gz $SERVER/small.txt
+expect_gz_equal $FILES/small.txt tmp/static-small.txt
+
+echo $HR
+echo "Stopping brotli_static NGINX"
+# Stop server.
+$NGINX -c $ROOT/script/test_static.conf -s stop
 
 ################################################################################
 
