@@ -1,0 +1,70 @@
+name: Build/Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, reopened, labeled, synchronize]
+
+jobs:
+  ubuntu_build:
+    name: Build and test ${{ matrix.name }}
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
+    strategy:
+      matrix: 
+        include:
+          - name: cmake:gcc7:ubuntu.20.04
+            build_system: cmake
+            c_compiler: gcc-7
+            cxx_compiler: g++-7
+            extra_apt_pkgs: gcc-7 g++-7
+            os: ubuntu-20.04
+            
+          - name: cmake:gcc8:ubuntu.20.04
+            build_system: cmake
+            c_compiler: gcc-8
+            cxx_compiler: g++-8
+            extra_apt_pkgs: gcc-8 g++-8
+            os: ubuntu-20.04
+            
+          - name: cmake:gcc9:ubuntu.20.04
+            build_system: cmake
+            c_compiler: gcc-9
+            cxx_compiler: g++-9
+            os: ubuntu-20.04
+            
+          - name: cmake:gcc10:ubuntu.20.04
+            build_system: cmake
+            c_compiler: gcc-10
+            cxx_compiler: g++-10
+            os: ubuntu-20.04
+            
+          - name: cmake:gcc11:ubuntu.20.04
+            build_system: cmake
+            c_compiler: gcc-11
+            cxx_compiler: g++-11
+            extra_apt_pkgs: gcc-11 g++-11
+            os: ubuntu-20.04
+            
+    env:
+      CC: ${{ matrix.c_compiler || 'gcc' }}
+      CXX: ${{ matrix.cxx_compiler || 'gcc' }}
+    steps:
+    - name: Install extra deps @ Ubuntu
+      if: ${{ runner.os == 'Linux' }}
+      run: |
+        EXTRA_PACKAGES="${{ matrix.extra_apt_pkgs || '' }}"
+        sudo apt update
+        sudo apt install -y ${EXTRA_PACKAGES}
+    - name: Checkout the source
+      uses: actions/checkout@v3
+      with:
+        submodules: true
+        fetch-depth: 1
+    - name: Run compile script
+      run: script/.actions-compile.sh
+    - name: Run before test script
+      run: script/.actions-before-test.sh
+    - name: Test script
+      run: script/.actions-test.sh
