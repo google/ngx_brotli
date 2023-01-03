@@ -18,7 +18,7 @@ jobs:
         run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
       - name: Bump Version And Push Tag
-        uses: anothrNick/github-tag-action@1.52.0
+        uses: anothrNick/github-tag-action@1.56.0
         id: tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
