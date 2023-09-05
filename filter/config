@@ -44,12 +44,6 @@ ngx_module_name=ngx_http_brotli_filter_module
 
 brotli="$ngx_addon_dir/deps/brotli/c"
 if [ ! -f "$brotli/include/brotli/encode.h" ]; then
-  brotli="/usr/local"
-fi
-if [ ! -f "$brotli/include/brotli/encode.h" ]; then
-  brotli="/usr"
-fi
-if [ ! -f "$brotli/include/brotli/encode.h" ]; then
 cat << END
 
 $0: error: \
@@ -67,7 +61,6 @@ BROTLI_OUTPUT_DIRECTORY="$brotli/../out"
 BROTLI_ENC_H="$brotli/include/brotli/encode.h \
               $brotli/include/brotli/port.h \
               $brotli/include/brotli/types.h"
-BROTLI_ENC_LIB="-lbrotlienc"
 BROTLI_ENC_LIB="-L$BROTLI_OUTPUT_DIRECTORY -lbrotlienc -lbrotlicommon"
 
 
