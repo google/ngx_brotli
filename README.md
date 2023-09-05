@@ -38,7 +38,7 @@ Both Brotli library and nginx module are under active development.
 
 ### Statically compiled
 
-Chechout the latest `ngx_brotli` and build the dependencies
+Checkout the latest `ngx_brotli` and build the dependencies:
 
 ```
 git clone --recurse-submodules -j8 https://github.com/google/ngx_brotli
