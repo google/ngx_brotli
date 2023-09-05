@@ -11,7 +11,6 @@ ngx_brotli is a set of two nginx modules:
 - ngx_brotli filter module - used to compress responses on-the-fly,
 - ngx_brotli static module - used to serve pre-compressed files.
 
-[![TravisCI Build Status](https://travis-ci.org/google/ngx_brotli.svg?branch=master)](https://travis-ci.org/google/ngx_brotli)
 
 ## Table of Contents
 
@@ -37,6 +36,29 @@ Both Brotli library and nginx module are under active development.
 
 ## Installation
 
+### Statically compiled
+
+Chechout the latest `ngx_brotli` and build the dependencies
+
+```
+git clone --recurse-submodules -j8 https://github.com/google/ngx_brotli
+cd ngx_brotli/deps/brotli
+mkdir out && cd out
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS="-Ofast -m64 -march=native -mtune=native -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" -DCMAKE_CXX_FLAGS="-Ofast -m64 -march=native -mtune=native -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" -DCMAKE_INSTALL_PREFIX=./installed ..
+cmake --build . --config Release --target brotlienc
+cd ../../../..
+```
+
+
+    $ cd nginx-1.x.x
+    $ export CFLAGS="-m64 -march=native -mtune=native -Ofast -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections"
+    $ export LDFLAGS="-m64 -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
+    $ ./configure --add-module=/path/to/ngx_brotli
+    $ make && make install
+  
+This will compile the module directly into Nginx.
+
+
 ### Dynamically loaded
 
     $ cd nginx-1.x.x
@@ -51,13 +73,7 @@ load_module modules/ngx_http_brotli_filter_module.so;
 load_module modules/ngx_http_brotli_static_module.so;
 ```
 
-### Statically compiled
 
-    $ cd nginx-1.x.x
-    $ ./configure --add-module=/path/to/ngx_brotli
-    $ make && make install
-  
-This will compile the module directly into Nginx.
 
 ## Configuration directives
 
