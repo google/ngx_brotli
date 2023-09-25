@@ -153,7 +153,7 @@ and compressed response sizes.
 brotli on;
 brotli_comp_level 6;
 brotli_static on;
-brotli_types application/atom+xml application/javascript application/json application/rss+xml
+brotli_types application/atom+xml application/javascript application/json application/vnd.api+json application/rss+xml
              application/vnd.ms-fontobject application/x-font-opentype application/x-font-truetype
              application/x-font-ttf application/x-javascript application/xhtml+xml application/xml
              font/eot font/opentype font/otf font/truetype image/svg+xml image/vnd.microsoft.icon
