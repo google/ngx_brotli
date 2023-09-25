@@ -103,7 +103,11 @@ if [ "$ngx_module_link" != DYNAMIC ]; then
                          | sed "s/$next/$next $ngx_module_name/"`
 fi
 
-CFLAGS="$CFLAGS -Wno-deprecated-declarations"
+if [ "$NGX_MSVC_VER" = "" ]; then
+    CFLAGS="$CFLAGS -Wno-deprecated-declarations"
+else  # MSVC
+    CFLAGS="$CFLAGS -Y- -wd4127 -wd4189 -wd4201 -wd4334 -wd4702"
+fi
 
 have=NGX_HTTP_BROTLI_FILTER . auto/have
 have=NGX_HTTP_BROTLI_FILTER_MODULE . auto/have  # deprecated
