@@ -261,6 +261,7 @@ static ngx_int_t handler(ngx_http_request_t* req) {
   content_encoding_entry = ngx_list_push(&req->headers_out.headers);
   if (content_encoding_entry == NULL) return NGX_HTTP_INTERNAL_SERVER_ERROR;
   content_encoding_entry->hash = 1;
+  content_encoding_entry->next = NULL;
   ngx_str_set(&content_encoding_entry->key, kContentEncoding);
   ngx_str_set(&content_encoding_entry->value, kEncoding);
   req->headers_out.content_encoding = content_encoding_entry;
