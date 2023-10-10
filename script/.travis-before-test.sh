@@ -4,6 +4,7 @@ set -ex
 # Setup shortcuts.
 ROOT=`pwd`
 FILES=$ROOT/script/test
+BROTLI=$ROOT/deps/brotli/out/brotli
 
 # Setup directory structure.
 cd $ROOT/script
@@ -19,6 +20,8 @@ fi
 curl --compressed -o $FILES/war-and-peace.txt http://www.gutenberg.org/files/2600/2600-0.txt
 echo "Kot lomom kolol slona!" > $FILES/small.txt
 echo "<html>Kot lomom kolol slona!</html>" > $FILES/small.html
+
+$BROTLI $FILES/small.html
 
 # Restore status-quo.
 cd $ROOT
