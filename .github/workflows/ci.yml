@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.compiler }} on ubuntu-22.04
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc-11
+            cc: gcc-11
+            cxx: g++-11
+            apt: gcc-11 g++-11
+          - compiler: gcc-12
+            cc: gcc-12
+            cxx: g++-12
+            apt: gcc-12 g++-12
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+            apt: clang
+
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install toolchain and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ${{ matrix.apt }} \
+            cmake \
+            make \
+            libpcre3-dev \
+            zlib1g-dev \
+            libssl-dev \
+            curl
+
+      - name: Compile nginx + brotli CLI
+        run: script/ci-compile.sh
+
+      - name: Prepare test fixtures
+        run: script/ci-before-test.sh
+
+      - name: Run tests
+        run: script/ci-test.sh
+
+      - name: Stop nginx (always)
+        if: always()
+        run: killall nginx || true
