@@ -36,11 +36,9 @@ Both Brotli library and nginx module are under active development.
 
 ## Installation
 
-### Statically compiled
-
 Checkout the latest `ngx_brotli` and build the dependencies:
 
-```
+```bash
 git clone --recurse-submodules -j8 https://github.com/google/ngx_brotli
 cd ngx_brotli/deps/brotli
 mkdir out && cd out
@@ -49,21 +47,27 @@ cmake --build . --config Release --target brotlienc
 cd ../../../..
 ```
 
+Then either choose static or dynamic method depending on your needs.
 
-    $ cd nginx-1.x.x
-    $ export CFLAGS="-m64 -march=native -mtune=native -Ofast -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections"
-    $ export LDFLAGS="-m64 -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
-    $ ./configure --add-module=/path/to/ngx_brotli
-    $ make && make install
-  
+### Statically compiled
+
+```bash
+cd nginx-1.x.x
+export CFLAGS="-m64 -march=native -mtune=native -Ofast -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections"
+export LDFLAGS="-m64 -Wl,-s -Wl,-Bsymbolic -Wl,--gc-sections"
+./configure --add-module=/path/to/ngx_brotli
+make && make install
+```
+
 This will compile the module directly into Nginx.
-
 
 ### Dynamically loaded
 
-    $ cd nginx-1.x.x
-    $ ./configure --with-compat --add-dynamic-module=/path/to/ngx_brotli
-    $ make modules
+```bash
+cd nginx-1.x.x
+./configure --with-compat --add-dynamic-module=/path/to/ngx_brotli
+make modules
+```
 
 You will need to use **exactly** the same `./configure` arguments as your Nginx configuration and append `--with-compat --add-dynamic-module=/path/to/ngx_brotli` to the end, otherwise you will get a "module is not binary compatible" error on startup. You can run `nginx -V` to get the configuration arguments for your Nginx installation.
 
@@ -72,8 +76,6 @@ You will need to use **exactly** the same `./configure` arguments as your Nginx 
 load_module modules/ngx_http_brotli_filter_module.so;
 load_module modules/ngx_http_brotli_static_module.so;
 ```
-
-
 
 ## Configuration directives
 
