@@ -153,6 +153,7 @@ static ngx_int_t handler(ngx_http_request_t* req) {
   ngx_table_elt_t* content_encoding_entry;
   ngx_buf_t* buf;
   ngx_chain_t out;
+  time_t orig_mtime;
 
   /* Only GET and HEAD requensts are supported. */
   if (!(req->method & (NGX_HTTP_GET | NGX_HTTP_HEAD))) return NGX_DECLINED;
@@ -173,19 +174,74 @@ static ngx_int_t handler(ngx_http_request_t* req) {
     if (rc != NGX_OK) return NGX_DECLINED;
   }
 
-  /* Get path and append the suffix. */
+  /* Get path with room to append the suffix. */
   last = ngx_http_map_uri_to_path(req, &path, &root, kSuffixLen);
   if (last == NULL) return NGX_HTTP_INTERNAL_SERVER_ERROR;
+
+  location_cfg = ngx_http_get_module_loc_conf(req, ngx_http_core_module);
+  log = req->connection->log;
+
+  /* Skip using statically compressed brotli file if it is older
+     than the original file, unless NGX_HTTP_BROTLI_STATIC_ALWAYS */
+  if (cfg->enable == NGX_HTTP_BROTLI_STATIC_ON)
+  {
+      ngx_memzero(&file_info, sizeof(ngx_open_file_info_t));
+      file_info.read_ahead = location_cfg->read_ahead;
+      file_info.directio = location_cfg->directio;
+      file_info.valid = location_cfg->open_file_cache_valid;
+      file_info.min_uses = location_cfg->open_file_cache_min_uses;
+      file_info.errors = location_cfg->open_file_cache_errors;
+      file_info.events = location_cfg->open_file_cache_events;
+
+      rc = ngx_http_set_disable_symlinks(req, location_cfg, &path, &file_info);
+      if (rc != NGX_OK) {
+          return NGX_HTTP_INTERNAL_SERVER_ERROR;
+      }
+
+      rc = ngx_open_cached_file(location_cfg->open_file_cache, &path,
+                                &file_info, req->pool);
+      if (rc != NGX_OK) {
+        ngx_uint_t level;
+        switch (file_info.err) {
+          case 0:
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+
+          case NGX_ENOENT:
+          case NGX_ENOTDIR:
+          case NGX_ENAMETOOLONG:
+            return NGX_DECLINED;
+
+    #if (NGX_HAVE_OPENAT)
+          case NGX_EMLINK:
+          case NGX_ELOOP:
+    #endif
+          case NGX_EACCES:
+            level = NGX_LOG_ERR;
+            break;
+
+          default:
+            level = NGX_LOG_CRIT;
+            break;
+        }
+        ngx_log_error(level, log, file_info.err, "%s \"%s\" failed",
+                      file_info.failed, path.data);
+        return NGX_DECLINED;
+      }
+
+      orig_mtime = file_info.mtime;
+  } else {
+    /* Force stale content check to always pass */
+    orig_mtime = (time_t) -1;
+  }
+
   /* +1 for reinstating the terminating 0. */
   ngx_cpystrn(last, kSuffix, kSuffixLen + 1);
   path.len += kSuffixLen;
 
-  log = req->connection->log;
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "http filename: \"%s\"",
                  path.data);
 
   /* Prepare to read the file. */
-  location_cfg = ngx_http_get_module_loc_conf(req, ngx_http_core_module);
   ngx_memzero(&file_info, sizeof(ngx_open_file_info_t));
   file_info.read_ahead = location_cfg->read_ahead;
   file_info.directio = location_cfg->directio;
@@ -225,6 +281,14 @@ static ngx_int_t handler(ngx_http_request_t* req) {
     ngx_log_error(level, log, file_info.err, "%s \"%s\" failed",
                   file_info.failed, path.data);
     return NGX_DECLINED;
+  }
+
+  /* Check if the existing file is newer than the compressed .br file */
+  if (orig_mtime > file_info.mtime)
+  {
+    ngx_log_error(NGX_LOG_DEBUG_HTTP, log, 0, "Not serving stale static file \"%s\"",
+                  path.data);
+      return NGX_DECLINED;
   }
 
   /* So far so good. */
