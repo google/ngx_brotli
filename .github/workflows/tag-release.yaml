@@ -1,0 +1,30 @@
+name: tag-release
+on:
+  push:
+    # Tag a release upon pushing code to the master branch
+    branches:
+      - master
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+
+      - name: Get Short SHA Of Last Commit
+        id: short
+        run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      - name: Bump Version And Push Tag
+        uses: anothrNick/github-tag-action@1.56.0
+        id: tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
+          INITIAL_VERSION: 1.0.0
+          WITH_V: true
+
+      - name: Print Results
+        run: echo "Tagged Commit ${{ steps.short.outputs.sha_short }} With Tag ${{ steps.tag.outputs.tag }}"
