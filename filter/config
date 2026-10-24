@@ -42,31 +42,51 @@ fi
 ngx_module_type=HTTP_FILTER
 ngx_module_name=ngx_http_brotli_filter_module
 
-brotli="$ngx_addon_dir/deps/brotli/c"
-if [ ! -f "$brotli/include/brotli/encode.h" ]; then
-cat << END
+use_system_brotli=no
+brotli_prefix=""
 
-$0: error: \
-Brotli library is missing from the $brotli directory.
+if pkg-config --exists libbrotlienc 2>/dev/null ; then
+    brotli_prefix=$(pkg-config --variable=prefix libbrotlienc)
+    if [ -f "$brotli_prefix/include/brotli/encode.h" ]; then
+        use_system_brotli=yes
+    fi
+fi
 
-Please make sure that the git submodule has been checked out:
+if [ "$use_system_brotli" = no ]; then
+    brotli="$ngx_addon_dir/deps/brotli/c"
+    if [ ! -f "$brotli/include/brotli/encode.h" ]; then
+cat <<END
+
+$0: error:
+Brotli library not found – neither a system installation detected
+(tried \`pkg-config libbrotlienc\`) nor the bundled sub‑module present.
+
+If you want to use the bundled copy, run:
 
     cd $ngx_addon_dir && git submodule update --init && cd $PWD
 
 END
-    exit 1
+        exit 1
+    fi
 fi
 
-BROTLI_OUTPUT_DIRECTORY="$brotli/../out"
-BROTLI_ENC_H="$brotli/include/brotli/encode.h \
-              $brotli/include/brotli/port.h \
-              $brotli/include/brotli/types.h"
-
-
-ngx_module_incs="$brotli/include"
-ngx_module_deps="$BROTLI_ENC_H"
 ngx_module_srcs="$BROTLI_MODULE_SRC_DIR/ngx_http_brotli_filter_module.c"
-ngx_module_libs="-L$BROTLI_OUTPUT_DIRECTORY -lbrotlienc -lbrotlicommon -lm"
+
+if [ "$use_system_brotli" = yes ]; then
+    ngx_module_incs="$(pkg-config --cflags-only-I libbrotlienc)"
+    ngx_module_libs="$(pkg-config --libs libbrotlienc) -lm"
+    ngx_module_deps=""
+else
+    BROTLI_OUTPUT_DIRECTORY="$brotli/../out"
+    BROTLI_ENC_H="$brotli/include/brotli/encode.h \
+                  $brotli/include/brotli/port.h \
+                  $brotli/include/brotli/types.h"
+
+    ngx_module_incs="$brotli/include"
+    ngx_module_deps="$BROTLI_ENC_H"
+    ngx_module_libs="-L$BROTLI_OUTPUT_DIRECTORY -lbrotlienc -lbrotlicommon -lm"
+fi
+
 ngx_module_order="$ngx_module_name \
                   ngx_pagespeed \
                   ngx_http_postpone_filter_module \
