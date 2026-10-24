@@ -36,6 +36,14 @@ Both Brotli library and nginx module are under active development.
 
 ## Installation
 
+### Debian
+
+This module is available as a Debian package:
+
+```
+sudo apt install libnginx-mod-http-brotli-filter libnginx-mod-http-brotli-static
+```
+
 ### Statically compiled
 
 Checkout the latest `ngx_brotli` and build the dependencies:
